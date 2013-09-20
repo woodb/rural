@@ -72,7 +72,7 @@ def _main():
     if args.configure:
         config_fh = open(config_file, 'w')
         _create_config(config_fh)
-        config_fh.seak(0)
+        config_fh.seek(0)
 
     # Upload to S3
     aws_access_key, aws_secret_key, bucket_name = _load_config(config_fh)
