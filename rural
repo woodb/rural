@@ -21,7 +21,7 @@ def _create_config(fh):
     aws_access_key = raw_input().upper()
 
     sys.stdout.write("   AWS Secret Key: ")
-    aws_secret_key = raw_input().upper()
+    aws_secret_key = raw_input()
 
     sys.stdout.write("   Default Bucket: ")
     default_bucket_name = raw_input()
@@ -53,7 +53,7 @@ def _main():
     parser.add_argument("--configure", dest="configure", action="store_true")
     args = parser.parse_args()
     if args.filename:
-        filename = args.filename[0]
+        filename = args.filename
 
     config_file = None
     if os.getenv("HOME"):
@@ -79,10 +79,11 @@ def _main():
     if bucket_name and aws_access_key and aws_secret_key:
         from boto.s3.connection import S3Connection
         from boto.s3.key import Key
+        from boto.s3.bucket import Bucket
 
         s3conn = S3Connection(aws_access_key_id=aws_access_key,
                     aws_secret_access_key=aws_secret_key)
-        bucket = s3conn.get_bucket(bucket_name)
+        bucket = Bucket(s3conn, bucket_name)
 
         k = Key(bucket)
         k.key = filename
