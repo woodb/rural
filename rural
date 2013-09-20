@@ -7,15 +7,6 @@ Simple command line utility for uploading local files to Amazon Web Services
 (AWS) Simple Storage Service (S3).
 """
 
-__author__ = "Brandon Wood"
-__copyright__ = "Copyright 2013, Brandon Wood"
-__license__ = "BSD"
-
-__version__ = "0.0.1"
-__maintainer__ = "Brandon Wood"
-__email__ = "btwood+rural@h6o6.com"
-__status__ = "Development"
-
 
 CONFIG_MISSING_MESSAGE = """rural has not yet been configured, or the configuration 
 file appears to be missing. Run the configuration wizard with `rural --configure`

@@ -9,7 +9,7 @@ Installation and Usage
 ```
 $ git clone https://github.com/woodb/rural.git
 $ cd rural
-$ pip install -r requirements.txt
-$ ./rural.py --configure
-$ ./rural.py myfile.pdf
+$ sudo python setup.py install 
+$ rural --configure
+$ rural myfile.pdf
 ```
