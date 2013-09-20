@@ -7,7 +7,6 @@ Simple command line utility for uploading local files to Amazon Web Services
 (AWS) Simple Storage Service (S3).
 """
 
-
 CONFIG_MISSING_MESSAGE = """rural has not yet been configured, or the configuration 
 file appears to be missing. Run the configuration wizard with `rural --configure`
 """
@@ -49,11 +48,12 @@ def _main():
     # Parse command line arguments
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("filename", help="name of file to upload", nargs=1,
+    parser.add_argument("filename", help="name of file to upload", nargs='?',
             default=None)
     parser.add_argument("--configure", dest="configure", action="store_true")
     args = parser.parse_args()
-    filename = args.filename[0]
+    if args.filename:
+        filename = args.filename[0]
 
     config_file = None
     if os.getenv("HOME"):
@@ -72,7 +72,7 @@ def _main():
     if args.configure:
         config_fh = open(config_file, 'w')
         _create_config(config_fh)
-        config_fh.seek(0)
+        sys.exit(0)
 
     # Upload to S3
     aws_access_key, aws_secret_key, bucket_name = _load_config(config_fh)
