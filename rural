@@ -38,6 +38,24 @@ def _load_config(fh):
         cfg_data['bucket_name']
 
 
+def _cb_progressbar(uploaded_bytes, total_bytes):
+    """Callback function that outputs a progressbar to stderr based on what's
+    up"""
+    import sys
+
+    pbw = 80 # progress bar width 
+
+    progress_percent = float(uploaded_bytes) / float(total_bytes)
+
+    sys.stderr.write("\r[%s%s] %d%%" % (
+        '=' * int(progress_percent * pbw / 2),
+        ' ' * (pbw / 2- int(progress_percent * pbw / 2)),
+        int(progress_percent * 100)))
+
+    if progress_percent == 1:
+        sys.stderr.write("\n")
+
+
 def _main():
     """
     rural._main
@@ -87,7 +105,7 @@ def _main():
 
         k = Key(bucket)
         k.key = filename
-        k.set_contents_from_filename(filename)
+        k.set_contents_from_filename(filename, cb=_cb_progressbar)
         k.make_public()
 
         url = k.generate_url(86400)
