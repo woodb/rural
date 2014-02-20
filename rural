@@ -62,8 +62,8 @@ def _main():
     ~~~~~~~~~~~
     Handles option parsing, configuration management and command execution.
     """
-
     # Parse command line arguments
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("filename", help="name of file to upload", nargs='?',
@@ -72,7 +72,12 @@ def _main():
     args = parser.parse_args()
     if args.filename:
         filename = args.filename
+    else:
+        raise IOError("filename must be defined at runtime")
 
+    
+    # Configuration
+    # ~~~~~~~~~~~~~
     config_file = None
     if os.getenv("HOME"):
         config_file = os.path.join(os.getenv("HOME"), ".rural")
@@ -80,37 +85,44 @@ def _main():
         raise NotImplementedError, "rural currently only supports POSIX \
             compliant environments (i.e. rural does not work on Windows)"
         sys.exit(1)
+
     try:
         config_fh = open(config_file, "r")
     except IOError:
         if not args.configure:
             print CONFIG_MISSING_MESSAGE
             sys.exit(1)
-    
+
     if args.configure:
         config_fh = open(config_file, 'w')
         _create_config(config_fh)
         sys.exit(0)
 
-    # Upload to S3
+
+    # Amazon Web Services (AWS) Related Logic
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     aws_access_key, aws_secret_key, bucket_name = _load_config(config_fh)
     if bucket_name and aws_access_key and aws_secret_key:
         from boto.s3.connection import S3Connection
         from boto.s3.key import Key
         from boto.s3.bucket import Bucket
-
         s3conn = S3Connection(aws_access_key_id=aws_access_key,
                     aws_secret_access_key=aws_secret_key)
         bucket = Bucket(s3conn, bucket_name)
 
+        # Upload file to S3
         k = Key(bucket)
         k.key = filename
         k.set_contents_from_filename(filename, cb=_cb_progressbar)
         k.make_public()
 
+        # Get the AWS S3 public URL for the uploaded file
         url = k.generate_url(86400)
         url = ''.join(url.split('?')[:-1])
-        xerox.copy(url)
+
+        # Print AWS S3 public URL to the clipboard and stdout
+        from xerox import copy
+        copy(url)
         print url
     else:
         raise ValueError, "AWS configuration incomplete"
@@ -121,7 +133,6 @@ if __name__ == '__main__':
     import os
     import sys
 
-    import xerox
     import yaml
     try:
         from yaml import CLoader as Loader, CDumper as Dumper
