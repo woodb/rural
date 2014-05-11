@@ -11,6 +11,61 @@ CONFIG_MISSING_MESSAGE = """rural has not yet been configured, or the configurat
 file appears to be missing. Run the configuration wizard with `rural --configure`
 """
 
+from xerox import copy
+from boto.s3.connection import S3Connection
+from boto.s3.key import Key
+from boto.s3.bucket import Bucket
+
+class RuralSession(object):
+    aws_access_key_id = None
+    aws_secret_access_key = None
+    connection = None
+    bucket = None
+    bucket_name = None
+    url = None
+
+    def __init__(self, aws_access_key_id, aws_secret_access_key, bucket_name):
+        self.aws_access_key_id = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
+        self.bucket_name = bucket_name
+        self._connect()
+
+    def _check_config(self):
+        if self.aws_access_key_id and self.aws_secret_access_key and self.bucket_name:
+            self._connect()
+        else:
+            raise EnvironmentError("Rural object configuration incomplete")
+
+    def _connect(self):
+        if self.connection is None:
+            self.connection = S3Connection(
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key
+            )
+
+        if self.bucket is None:
+            self.bucket = Bucket(self.connection, self.bucket_name)
+
+    def upload(self, filename, cb=None):
+        """
+        Upload a local file to a pre-specified S3 bucket.
+
+        :type fh: file handle
+        :param fh: file handle to upload to S3
+        """
+        self._check_config()
+
+        self.key = Key(self.bucket)
+        self.key.key = filename
+        self.key.set_contents_from_filename(filename, cb=cb)
+
+    def publicize(self):
+        self.key.make_public()
+        self.url = self.key.generate_url(86400)
+        self.url = ''.join(self.url.split('?')[:-1])
+
+
+
 def _create_config(fh):
     """
     rural._create_config
@@ -98,35 +153,14 @@ def _main():
         _create_config(config_fh)
         sys.exit(0)
 
-
-    # Amazon Web Services (AWS) Related Logic
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    aws_access_key, aws_secret_key, bucket_name = _load_config(config_fh)
-    if bucket_name and aws_access_key and aws_secret_key:
-        from boto.s3.connection import S3Connection
-        from boto.s3.key import Key
-        from boto.s3.bucket import Bucket
-        s3conn = S3Connection(aws_access_key_id=aws_access_key,
-                    aws_secret_access_key=aws_secret_key)
-        bucket = Bucket(s3conn, bucket_name)
-
-        # Upload file to S3
-        k = Key(bucket)
-        k.key = filename
-        k.set_contents_from_filename(filename, cb=_cb_progressbar)
-        k.make_public()
-
-        # Get the AWS S3 public URL for the uploaded file
-        url = k.generate_url(86400)
-        url = ''.join(url.split('?')[:-1])
-
-        # Print AWS S3 public URL to the clipboard and stdout
-        from xerox import copy
-        copy(url)
-        print url
-    else:
-        raise ValueError, "AWS configuration incomplete"
-        sys.exit(1)
+    aws_access_key_id, aws_secret_access_key, bucket_name = _load_config(config_fh)
+    rural_session = RuralSession(aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            bucket_name=bucket_name)
+    rural_session.upload(filename, cb=_cb_progressbar)
+    rural_session.publicize()
+    copy(rural_session.url)
+    print rural_session.url
 
 
 if __name__ == '__main__':
