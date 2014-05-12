@@ -6,11 +6,7 @@ rural
 Simple command line utility for uploading local files to Amazon Web Services
 (AWS) Simple Storage Service (S3).
 """
-
-CONFIG_MISSING_MESSAGE = """rural has not yet been configured, or the configuration 
-file appears to be missing. Run the configuration wizard with `rural --configure`
-"""
-
+import click
 from xerox import copy
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
@@ -28,7 +24,7 @@ class RuralSession(object):
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
         self.bucket_name = bucket_name
-        self._connect()
+        self._check_config()
 
     def _check_config(self):
         if self.aws_access_key_id and self.aws_secret_access_key and self.bucket_name:
@@ -37,14 +33,11 @@ class RuralSession(object):
             raise EnvironmentError("Rural object configuration incomplete")
 
     def _connect(self):
-        if self.connection is None:
-            self.connection = S3Connection(
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key
-            )
-
-        if self.bucket is None:
-            self.bucket = Bucket(self.connection, self.bucket_name)
+        self.connection = S3Connection(
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key
+        )
+        self.bucket = Bucket(self.connection, self.bucket_name)
 
     def upload(self, filename, cb=None):
         """
@@ -54,7 +47,6 @@ class RuralSession(object):
         :param fh: file handle to upload to S3
         """
         self._check_config()
-
         self.key = Key(self.bucket)
         self.key.key = filename
         self.key.set_contents_from_filename(filename, cb=cb)
@@ -65,115 +57,57 @@ class RuralSession(object):
         self.url = ''.join(self.url.split('?')[:-1])
 
 
-
-def _create_config(fh):
-    """
-    rural._create_config
-    ~~~~~~~~~~~~~~~~~~~~
-    Prompts to create the configuration file.
-    """
-    sys.stdout.write("AWS Access Key ID: ")
-    aws_access_key = raw_input().upper()
-
-    sys.stdout.write("   AWS Secret Key: ")
-    aws_secret_key = raw_input()
-
-    sys.stdout.write("   Default Bucket: ")
-    default_bucket_name = raw_input()
-
-    fh.write(yaml.dump({'aws_access_key' : aws_access_key,
-               'aws_secret_key' : aws_secret_key,
-               'bucket_name'    : default_bucket_name},
-               Dumper=Dumper))
-
-
-def _load_config(fh):
-    cfg_data = yaml.load(fh)
-    return cfg_data['aws_access_key'], cfg_data['aws_secret_key'], \
-        cfg_data['bucket_name']
-
-
 def _cb_progressbar(uploaded_bytes, total_bytes):
     """Callback function that outputs a progressbar to stderr based on what's
     up"""
     import sys
-
     pbw = 80 # progress bar width 
-
     progress_percent = float(uploaded_bytes) / float(total_bytes)
-
     sys.stderr.write("\r[%s%s] %d%%" % (
         '=' * int(progress_percent * pbw / 2),
         ' ' * (pbw / 2- int(progress_percent * pbw / 2)),
         int(progress_percent * 100)))
-
     if progress_percent == 1:
         sys.stderr.write("\n")
 
 
-def _main():
+@click.command()
+@click.option('--aws-access-key-id', envvar='AWS_ACCESS_KEY_ID',
+        help='AWS Access Key ID for the AWS API')
+@click.option('--aws-secret-access-key', envvar='AWS_SECRET_ACCESS_KEY',
+        help='AWS Secret Access Key for the AWS API')
+@click.option('--bucket-name', '-b', envvar='RURAL_BUCKET_NAME',
+        help='bucket name to which to upload/link files', required=True)
+@click.option('--verbose', '-v', count=True)
+@click.argument('filename', required=True)
+def upload_copy(aws_access_key_id, aws_secret_access_key, bucket_name, 
+        verbose, filename):
     """
-    rural._main
-    ~~~~~~~~~~~
-    Handles option parsing, configuration management and command execution.
+    Uploads a local file to AWS S3 and copy a publicly accessible link to the
+    file to the clipboard.
+
+    Environment variables can be set to configure this script, namely:
+
+        AWS_ACCESS_KEY_ID
+        AWS_SECRET_ACCESS_KEY_ID
+        RURAL_BUCKET_NAME
+
     """
-    # Parse command line arguments
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("filename", help="name of file to upload", nargs='?',
-            default=None)
-    parser.add_argument("--configure", dest="configure", action="store_true")
-    args = parser.parse_args()
-    if args.filename:
-        filename = args.filename
-    else:
-        raise IOError("filename must be defined at runtime")
-
-    
-    # Configuration
-    # ~~~~~~~~~~~~~
-    config_file = None
-    if os.getenv("HOME"):
-        config_file = os.path.join(os.getenv("HOME"), ".rural")
-    else:
-        raise NotImplementedError, "rural currently only supports POSIX \
-            compliant environments (i.e. rural does not work on Windows)"
-        sys.exit(1)
-
-    try:
-        config_fh = open(config_file, "r")
-    except IOError:
-        if not args.configure:
-            print CONFIG_MISSING_MESSAGE
-            sys.exit(1)
-
-    if args.configure:
-        config_fh = open(config_file, 'w')
-        _create_config(config_fh)
-        sys.exit(0)
-
-    aws_access_key_id, aws_secret_access_key, bucket_name = _load_config(config_fh)
-    rural_session = RuralSession(aws_access_key_id=aws_access_key_id,
+    cb = None
+    if verbose > 0:
+        cb = _cb_progressbar
+        if verbose > 1:
+            print("AWS Access Key ID:\t{}".format(aws_access_key_id))
+            print("AWS Secret Access Key:\t{}".format(aws_secret_access_key))
+            print("Bucket:\t{}".format(bucket_name))
+    rural_session = RuralSession(
+            aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
             bucket_name=bucket_name)
-    rural_session.upload(filename, cb=_cb_progressbar)
+    rural_session.upload(filename, cb=cb)
     rural_session.publicize()
     copy(rural_session.url)
     print rural_session.url
 
-
 if __name__ == '__main__':
-    import os
-    import sys
-
-    import yaml
-    try:
-        from yaml import CLoader as Loader, CDumper as Dumper
-    except ImportError:
-        from yaml import Loader, Dumper
-    except Exception as exc:
-        raise exc
-        sys.exit(1)
-
-    _main()
+    upload_copy()

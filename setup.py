@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 from setuptools import setup, find_packages
 
 __author__ = "Brandon Wood"
-__copyright__ = "Copyright 2013, Brandon Wood"
+__copyright__ = "Copyright 2014, Brandon Wood"
 __license__ = "BSD"
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 __maintainer__ = "Brandon Wood"
-__email__ = "btwood+rural@h6o6.com"
+__email__ = "btwood+rural@geometeor.com"
 __status__ = "Development"
 
 setup(name='rural',
@@ -22,5 +21,5 @@ setup(name='rural',
       url='https://github.com/woodb/rural',
       packages=find_packages(),
       scripts=['rural'],
-      install_requires=['boto', 'pyyaml', 'xerox'],
+      install_requires=['boto', 'click', 'xerox'],
     )
