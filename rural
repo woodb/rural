@@ -6,6 +6,9 @@ rural
 Simple command line utility for uploading local files to Amazon Web Services
 (AWS) Simple Storage Service (S3).
 """
+import sys
+import logging
+
 import click
 from xerox import copy
 from boto.s3.connection import S3Connection
@@ -60,7 +63,6 @@ class RuralSession(object):
 def _cb_progressbar(uploaded_bytes, total_bytes):
     """Callback function that outputs a progressbar to stderr based on what's
     up"""
-    import sys
     pbw = 80 # progress bar width 
     progress_percent = float(uploaded_bytes) / float(total_bytes)
     sys.stderr.write("\r[%s%s] %d%%" % (
@@ -70,6 +72,20 @@ def _cb_progressbar(uploaded_bytes, total_bytes):
     if progress_percent == 1:
         sys.stderr.write("\n")
 
+def initialize(verbosity=0):
+    """Setup loggers, basically """
+    global log
+    log = logging.Logger("rural")
+    log.verbosity = verbosity
+    log.stream = sys.stderr
+    log_handler = logging.StreamHandler(log.stream)
+    log.addHandler(log_handler)
+    if verbosity == 3:
+        log.setLevel(logging.DEBUG)
+    elif verbosity == 2:
+        log.setLevel(logging.INFO)
+    else:
+        log.setLevel(logging.ERROR)
 
 @click.command()
 @click.option('--aws-access-key-id', envvar='AWS_ACCESS_KEY_ID',
@@ -79,9 +95,10 @@ def _cb_progressbar(uploaded_bytes, total_bytes):
 @click.option('--bucket-name', '-b', envvar='RURAL_BUCKET_NAME',
         help='bucket name to which to upload/link files', required=True)
 @click.option('--verbose', '-v', count=True)
+@click.option('--silent/--loud', '-s', help='disable printing of URL', default=False)
 @click.argument('filename', required=True)
 def upload_copy(aws_access_key_id, aws_secret_access_key, bucket_name, 
-        verbose, filename):
+        verbose, silent, filename):
     """
     Uploads a local file to AWS S3 and copy a publicly accessible link to the
     file to the clipboard.
@@ -93,13 +110,14 @@ def upload_copy(aws_access_key_id, aws_secret_access_key, bucket_name,
         RURAL_BUCKET_NAME
 
     """
+    initialize(verbose)
+
     cb = None
     if verbose > 0:
         cb = _cb_progressbar
-        if verbose > 1:
-            print("AWS Access Key ID:\t{}".format(aws_access_key_id))
-            print("AWS Secret Access Key:\t{}".format(aws_secret_access_key))
-            print("Bucket:\t{}".format(bucket_name))
+        log.debug("AWS Access Key ID:\t{}".format(aws_access_key_id))
+        log.debug("AWS Secret Access Key:\t{}".format(aws_secret_access_key))
+        log.debug("Bucket:\t{}".format(bucket_name))
     rural_session = RuralSession(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
@@ -107,7 +125,8 @@ def upload_copy(aws_access_key_id, aws_secret_access_key, bucket_name,
     rural_session.upload(filename, cb=cb)
     rural_session.publicize()
     copy(rural_session.url)
-    print rural_session.url
+    if not silent:
+        print rural_session.url
 
 if __name__ == '__main__':
     upload_copy()
