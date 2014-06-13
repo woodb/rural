@@ -33,7 +33,7 @@ class RuralSession(object):
         if self.aws_access_key_id and self.aws_secret_access_key and self.bucket_name:
             self._connect()
         else:
-            raise EnvironmentError("Rural object configuration incomplete")
+            raise EnvironmentError("RuralSession object configuration incomplete")
 
     def _connect(self):
         self.connection = S3Connection(
@@ -67,7 +67,7 @@ def _cb_progressbar(uploaded_bytes, total_bytes):
     progress_percent = float(uploaded_bytes) / float(total_bytes)
     sys.stderr.write("\r[%s%s] %d%%" % (
         '=' * int(progress_percent * pbw / 2),
-        ' ' * (pbw / 2- int(progress_percent * pbw / 2)),
+        ' ' * (pbw / 2 - int(progress_percent * pbw / 2)),
         int(progress_percent * 100)))
     if progress_percent == 1:
         sys.stderr.write("\n")
