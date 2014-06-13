@@ -22,6 +22,16 @@ $ pbpaste
 https://my-s3-bucket.s3.amazonaws.com/myfile.pdf
 ```
 
+```rural``` also supports piped input from stdin, so long as it's UTF-8 
+encodable.
+
+```zsh
+$ < myfile.txt | rural -f myfile.txt
+https://my-s3-bucket.s3.amazonaws.com/myfile.txt
+$ pbpaste
+https://my-s3-bucket.s3.amazonaws.com/myfile.txt
+```
+
 To show more information, you can use multiple verbosity flags.
 
 ```zsh

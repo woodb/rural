@@ -8,12 +8,27 @@ Simple command line utility for uploading local files to Amazon Web Services
 """
 import sys
 import logging
+from uuid import uuid4
+from io import TextIOWrapper
 
 import click
 from xerox import copy
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from boto.s3.bucket import Bucket
+
+
+MIMETYPE_STDIN = 'text/plain'
+STDIN_FILENAME = '-'
+RURAL_STDIN_S3_PREFIX = 'stdin'
+VERBOSITY_MAP = {
+    0: logging.ERROR,
+    1: logging.WARNING,
+    2: logging.DEBUG
+}
+
+def get_default_stdin_filename():
+    return str(uuid4())
 
 class RuralSession(object):
     aws_access_key_id = None
@@ -23,17 +38,21 @@ class RuralSession(object):
     bucket_name = None
     url = None
 
+
     def __init__(self, aws_access_key_id, aws_secret_access_key, bucket_name):
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
         self.bucket_name = bucket_name
         self._check_config()
 
+
     def _check_config(self):
-        if self.aws_access_key_id and self.aws_secret_access_key and self.bucket_name:
-            self._connect()
-        else:
-            raise EnvironmentError("RuralSession object configuration incomplete")
+        for required in (self.aws_access_key_id, self.aws_secret_access_key,
+                self.bucket_name):
+            if required is None:
+                raise AttributeError("RuralSession object configuration incomplete")
+        self._connect()
+
 
     def _connect(self):
         self.connection = S3Connection(
@@ -42,7 +61,8 @@ class RuralSession(object):
         )
         self.bucket = Bucket(self.connection, self.bucket_name)
 
-    def upload(self, filename, cb=None):
+
+    def upload(self, fh, cb=None, remote_filename=None, mimetype=None):
         """
         Upload a local file to a pre-specified S3 bucket.
 
@@ -51,8 +71,32 @@ class RuralSession(object):
         """
         self._check_config()
         self.key = Key(self.bucket)
-        self.key.key = filename
-        self.key.set_contents_from_filename(filename, cb=cb)
+
+        if not isinstance(fh, TextIOWrapper):
+            # File handle given
+            self.key.key = remote_filename if remote_filename else fh.name
+            if mimetype is None:
+                headers = None
+            else:
+                headers = {'Content-Type': mimetype}
+            self.key.set_contents_from_file(fh, cb=cb, headers=headers)
+        else:
+            # Streaming from stdin
+            if mimetype is None:
+                mimetype = MIMETYPE_STDIN
+            from uuid import uuid4
+            key_name = '/'.join(
+                (RURAL_STDIN_S3_PREFIX, get_default_stdin_filename())
+            )
+            self.key.key = remote_filename if remote_filename else key_name
+            try:
+                self.key.set_contents_from_string(fh.read(), headers={
+                        'Content-Type': mimetype
+                    }
+                )
+            except UnicodeDecodeError:
+                raise NotImplementedError("Binary file stream not supported")
+                
 
     def publicize(self):
         self.key.make_public()
@@ -63,14 +107,16 @@ class RuralSession(object):
 def _cb_progressbar(uploaded_bytes, total_bytes):
     """Callback function that outputs a progressbar to stderr based on what's
     up"""
-    pbw = 80 # progress bar width 
-    progress_percent = float(uploaded_bytes) / float(total_bytes)
-    sys.stderr.write("\r[%s%s] %d%%" % (
-        '=' * int(progress_percent * pbw / 2),
-        ' ' * (pbw / 2 - int(progress_percent * pbw / 2)),
-        int(progress_percent * 100)))
-    if progress_percent == 1:
-        sys.stderr.write("\n")
+    if total_bytes:
+        pbw = 80 # progress bar width 
+        progress_percent = float(uploaded_bytes) / float(total_bytes)
+        sys.stderr.write("\r[%s%s] %d%%" % (
+            '=' * int(progress_percent * pbw / 2),
+            ' ' * (pbw / 2 - int(progress_percent * pbw / 2)),
+            int(progress_percent * 100)))
+        if int(progress_percent * 100) == 100:
+            sys.stderr.write('\n')
+
 
 def initialize(verbosity=0):
     """Setup loggers, basically """
@@ -80,12 +126,8 @@ def initialize(verbosity=0):
     log.stream = sys.stderr
     log_handler = logging.StreamHandler(log.stream)
     log.addHandler(log_handler)
-    if verbosity == 3:
-        log.setLevel(logging.DEBUG)
-    elif verbosity == 2:
-        log.setLevel(logging.INFO)
-    else:
-        log.setLevel(logging.ERROR)
+    log.setLevel(VERBOSITY_MAP.get(verbosity, 3))
+
 
 @click.command()
 @click.option('--aws-access-key-id', envvar='AWS_ACCESS_KEY_ID',
@@ -95,10 +137,11 @@ def initialize(verbosity=0):
 @click.option('--bucket-name', '-b', envvar='RURAL_BUCKET_NAME',
         help='bucket name to which to upload/link files', required=True)
 @click.option('--verbose', '-v', count=True)
-@click.option('--silent/--loud', '-s', help='disable printing of URL', default=False)
-@click.argument('filename', required=True)
+@click.option('--remote-filename', '-f', help='override remote file name')
+@click.option('--mimetype', '-m', help='override remote file mimetype')
+@click.argument('localfile', type=click.File(), default=STDIN_FILENAME)
 def upload_copy(aws_access_key_id, aws_secret_access_key, bucket_name, 
-        verbose, silent, filename):
+        verbose, remote_filename, mimetype, localfile):
     """
     Uploads a local file to AWS S3 and copy a publicly accessible link to the
     file to the clipboard.
@@ -110,23 +153,45 @@ def upload_copy(aws_access_key_id, aws_secret_access_key, bucket_name,
         RURAL_BUCKET_NAME
 
     """
+    global rural_session
+
+    # Setup loggers
     initialize(verbose)
 
-    cb = None
-    if verbose > 0:
-        cb = _cb_progressbar
-        log.debug("AWS Access Key ID:\t{}".format(aws_access_key_id))
-        log.debug("AWS Secret Access Key:\t{}".format(aws_secret_access_key))
-        log.debug("Bucket:\t{}".format(bucket_name))
+    log.debug("AWS Access Key ID:\t{}".format(aws_access_key_id))
+    log.debug("AWS Secret Access Key:\t{}".format(aws_secret_access_key))
+    log.debug("Bucket:\t{}".format(bucket_name))
+    
+    # Whether or not to have a progress bar
+    if verbose and not isinstance(localfile, TextIOWrapper):
+        _cb = _cb_progressbar
+    else:
+        _cb = None
+
     rural_session = RuralSession(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
             bucket_name=bucket_name)
-    rural_session.upload(filename, cb=cb)
+
+    # Upload file or stdin to S3
+    rural_session.upload(localfile, cb=_cb, remote_filename=remote_filename,
+            mimetype=mimetype)
     rural_session.publicize()
+
+    # Copy to clipboard
     copy(rural_session.url)
-    if not silent:
-        print rural_session.url
+    log.error(rural_session.url)
+
 
 if __name__ == '__main__':
-    upload_copy()
+    try:
+        upload_copy()
+    except AttributeError:
+        log.error("Configuration incomplete, seek --help")
+        sys.exit(1)
+    except NotImplementedError:
+        log.error("Binary file streams not currently supported, exiting")
+        sys.exit(1)
+    except KeyboardInterrupt, SystemExit:
+        log.warning("Interrupt caught, exiting")
+    sys.exit()
