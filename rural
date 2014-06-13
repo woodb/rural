@@ -149,7 +149,7 @@ def upload_copy(aws_access_key_id, aws_secret_access_key, bucket_name,
     Environment variables can be set to configure this script, namely:
 
         AWS_ACCESS_KEY_ID
-        AWS_SECRET_ACCESS_KEY_ID
+        AWS_SECRET_ACCESS_KEY
         RURAL_BUCKET_NAME
 
     """
