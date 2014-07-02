@@ -12,7 +12,11 @@ from uuid import uuid4
 from io import TextIOWrapper
 
 import click
-from xerox import copy
+try:
+    from xerox import copy
+except ImportError:
+    def copy(_):
+        log.warning('Failed to copy public URL to clipboard, continuing anyway')
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 from boto.s3.bucket import Bucket

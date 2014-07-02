@@ -6,7 +6,7 @@ __author__ = "Brandon Wood"
 __copyright__ = "Copyright 2014, Brandon Wood"
 __license__ = "BSD"
 
-__version__ = "0.0.4"
+__version__ = "0.0.5"
 __maintainer__ = "Brandon Wood"
 __email__ = "btwood+rural@geometeor.com"
 __status__ = "Development"
