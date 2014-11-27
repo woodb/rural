@@ -144,30 +144,27 @@ def initialize_loggers(verbosity=0):
 
 @click.command()
 @click.option('--aws-access-key-id', envvar='AWS_ACCESS_KEY_ID',
-              help='AWS Access Key ID for the AWS API')
+              help='AWS access key ID, defaults to environment variable '
+              'AWS_ACCESS_KEY_ID', show_default=True)
 @click.option('--aws-secret-access-key', envvar='AWS_SECRET_ACCESS_KEY',
-              help='AWS Secret Access Key for the AWS API')
+              help='AWS secret access key, defaults to environment '
+              'variable AWS_SECRET_ACCESS_KEY', show_default=True)
 @click.option('--bucket-name', '-b', envvar='RURAL_BUCKET_NAME',
-              help='bucket name to which to upload/link files', required=True)
+              help='bucket name to which to upload/link files, defaults to '
+              'environment variable RURAL_BUCKET_NAME',
+              show_default=True)
 @click.option('--verbose', '-v', count=True)
 @click.option('--remote-filename', '-f', help='override remote file name')
 @click.option('--mimetype', '-m', help='override remote file mimetype')
 @click.option('--prefix', '-p', envvar='RURAL_KEY_PREFIX',
-              help='prefix filenames with string')
+              help='directory of remote file, defaults to environment '
+              'variable RURAL_KEY_PREFIX', show_default=True)
 @click.version_option(__version__)
-@click.argument('localfile', type=click.File('rb'), default='-')
+@click.argument('localfile', type=click.File('r'), default='-')
 def upload_copy(aws_access_key_id, aws_secret_access_key, bucket_name,
                 verbose, remote_filename, mimetype, prefix, localfile):
     """Uploads a local file to AWS S3 and copy a publicly accessible link to
     the file to the clipboard.
-
-    Environment variables can be set to configure this script, namely:
-
-        AWS_ACCESS_KEY_ID
-        AWS_SECRET_ACCESS_KEY
-        RURAL_BUCKET_NAME
-        RURAL_KEY_PREFIX
-
     """
     global rural_session
 
