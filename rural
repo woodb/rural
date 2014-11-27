@@ -8,6 +8,8 @@
     uploaded file to the clipboard if possible.
 
 """
+__version__ = "0.0.6"
+
 import sys
 import logging
 from io import TextIOWrapper
@@ -152,6 +154,7 @@ def initialize_loggers(verbosity=0):
 @click.option('--mimetype', '-m', help='override remote file mimetype')
 @click.option('--prefix', '-p', envvar='RURAL_KEY_PREFIX',
               help='prefix filenames with string')
+@click.version_option(__version__)
 @click.argument('localfile', type=click.File('rb'), default='-')
 def upload_copy(aws_access_key_id, aws_secret_access_key, bucket_name,
                 verbose, remote_filename, mimetype, prefix, localfile):
