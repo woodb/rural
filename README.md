@@ -13,7 +13,7 @@ pip install rural
 
 Usage
 -----
-Once ```rural``` has been configured, it's a simple command line interface.
+Once `rural` has been configured, it's a simple command line interface.
 
 ```zsh
 $ rural myfile.pdf
@@ -22,8 +22,7 @@ $ pbpaste
 https://my-s3-bucket.s3.amazonaws.com/myfile.pdf
 ```
 
-```rural``` also supports piped input from stdin, so long as it's UTF-8 
-encodable.
+`rural` also supports piped input, so long as it's UTF-8 encodable.
 
 ```zsh
 $ < myfile.txt | rural -f myfile.txt
@@ -32,10 +31,10 @@ $ pbpaste
 https://my-s3-bucket.s3.amazonaws.com/myfile.txt
 ```
 
-To show more information, you can use multiple verbosity flags.
+To show more information, you can use the `--verbose` flag.
 
 ```zsh
-$ rural -vv -b my-other-bucket myfile2.pdf
+$ rural -v -b my-other-bucket myfile2.pdf
 AWS Access Key ID:	LsUCBGhw7qZZLUmlmhvtX
 AWS Secret Access Key:	mKDbRLKUmhocgVepept6QRLDv6GkBkNG1AxOnr
 Bucket:	my-other-bucket

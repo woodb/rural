@@ -6,7 +6,7 @@ __author__ = "Brandon Wood"
 __copyright__ = "Copyright 2014, Brandon Wood"
 __license__ = "BSD"
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 __maintainer__ = "Brandon Wood"
 __email__ = "btwood+rural@geometeor.com"
 __status__ = "Development"
@@ -21,5 +21,5 @@ setup(name='rural',
       url='https://github.com/woodb/rural',
       packages=find_packages(),
       scripts=['rural'],
-      install_requires=['boto', 'click', 'xerox'],
-    )
+      install_requires=['boto>=2.27.0', 'click>=3.0', 'xerox>=0.3.1'],
+      )
