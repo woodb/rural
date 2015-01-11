@@ -8,7 +8,7 @@
     uploaded file to the clipboard if possible.
 
 """
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 
 import sys
 import logging
@@ -195,7 +195,7 @@ def upload_copy(aws_access_key_id, aws_secret_access_key, bucket_name,
     try:
         from xerox import copy
         copy(rural_session.url)
-    except ImportError:
+    except:
         pass
 
     # Output URL to stderr
