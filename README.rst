@@ -1,8 +1,8 @@
 rural
 =====
 
-.. image:: https://img.shields.io/pypi/v/rural.svg   :target:
-.. image:: https://img.shields.io/pypi/l/rural.svg   :target:
+.. image:: https://img.shields.io/pypi/v/rural.svg
+.. image:: https://img.shields.io/pypi/l/rural.svg
 
 
 Simple command line utility for uploading files to Amazon Web Services (AWS)
