@@ -1,6 +1,10 @@
 rural
 =====
 
+.. image:: https://img.shields.io/pypi/v/rural.svg   :target:
+.. image:: https://img.shields.io/pypi/l/rural.svg   :target:
+
+
 Simple command line utility for uploading files to Amazon Web Services (AWS)
 Simple Storage Service (S3) and copying a public link to that file to the
 clipboard.
@@ -48,7 +52,7 @@ For other options, use the ```--help``` flag.
 Configuration
 -------------
 ```rural``` requires both an AWS access key ID and AWS secret access key that
-allow for access to a specified S3 bucket. 
+allow for access to a specified S3 bucket.
 
 You can configure rural with environment variables ```AWS_ACCESS_KEY_ID```,
 ```AWS_SECRET_ACCESS_KEY```, and ```RURAL_BUCKET_NAME```. We recommend that
